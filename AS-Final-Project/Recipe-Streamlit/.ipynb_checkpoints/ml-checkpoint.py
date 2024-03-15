@@ -13,22 +13,23 @@ from IPython.display import display
 
 with open("spoonacular-api-key.txt", "r") as file:
     api_key = file.readline().split(':')[1].strip()
+
+
+
 #################
 
 def get_recipe_id(recipe_title):
-    endpoint = 'https://api.spoonacular.com/recipes/findByIngredients'
+    endpoint = 'https://api.spoonacular.com/recipes/complexSearch'
     params = {
         'apiKey': api_key,
-        'titleMatch': recipe_title
+        'query': recipe_title
     }
     response = requests.get(endpoint, params=params)
     if response.status_code == 200:
-        recipes = response.json()
-        if recipes:
-            return recipes[0]['id']  # the first recipe is the one we want
+        results = response.json()
+        if results:
+            return results['results'][0]['id']  # the first recipe is the one we want
     return None
-
-#################
 
 def get_recipe_instructions(recipe_title):
     recipe_id = get_recipe_id(recipe_title)
@@ -38,10 +39,11 @@ def get_recipe_instructions(recipe_title):
             'apiKey': api_key
         }
         response = requests.get(endpoint, params=params)
+        
         if response.status_code == 200:
             recipe_info = response.json()
-            st.write("here are the instructions for your prefered recipe: ")
-            return recipe_info['instructions']
+            return recipe_info.get('instructions', 'Instructions not available.')
+            return recipe_info
     return "Mamma mia! I cannot find my cookbook for this one."
 
 ##################
@@ -93,11 +95,14 @@ def suggest_recipes():
 
 #### Prompt the user to select a preferred recipe
         selected_recipe_title = st.text_input("2. Which of those recipes do you prefer? Copy-paste your favorite recipe title (case sensitive): ")
-        get_recipe_instructions(selected_recipe_title)
+        instructions=get_recipe_instructions(selected_recipe_title)
+        instructions=instructions.replace("<ol><li>","").replace("</li></ol>","")
+        st.markdown(instructions)
+        
         selected_recipe = data[data['title'] == selected_recipe_title].head(1)
         
         if len(selected_recipe) > 0:
-            st.write("\nLove your choice. Here are some details about your preferred recipe:")
+            st.write("## Love your choice. Here are some details about your preferred recipe:")
             print_recipe_details(selected_recipe_title)
         
             
@@ -112,10 +117,10 @@ def suggest_recipes():
             cluster_recipes = cluster_recipes[cluster_recipes['title'] != selected_recipe_title]
            # Choose a random recipe from the same cluster
             random_recommendation = cluster_recipes.sample(1)
-            st.write("\nGiven your fine taste, may I risk a suggestion:", random_recommendation['title'].iloc[0])
+            st.write("## Given your fine taste, may I risk a suggestion?")
             print_recipe_details(random_recommendation['title'].iloc[0])
             
-        else:st.write("\nExcellent choice !")
+        else:st.write("## Excellent choice !")
         
     else:
         # Print an error message if the request was not successful
